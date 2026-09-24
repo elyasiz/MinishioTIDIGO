@@ -5,7 +5,7 @@ Website keuangan dengan tiga menu: Ringkasan, Transaksi, dan Laporan. Dibuat men
 ## Fitur
 
 - Ringkasan pemasukan, pengeluaran, saldo tercatat, grafik, dan rekap bulanan.
-- Impor TXT/CSV bertabel dengan pemetaan kolom, pratinjau, deteksi duplikasi, dan konfirmasi.
+- Impor TXT/CSV otomatis: cukup pilih file, transaksi langsung dihitung dan disimpan, tanpa pemetaan kolom atau konfirmasi tambahan. Duplikat dilewati.
 - Pencatatan pengeluaran, bukti JPG/PNG/PDF privat (maks. 2 MB).
 - Dua akses: pengelola dan pembaca. File sumber/bukti hanya dapat diunduh pengelola.
 - Pembatalan transaksi/impor, saldo awal, konfirmasi kelengkapan, dan jejak perubahan.
@@ -27,9 +27,9 @@ Jangan commit `.env*`, `.local`, token, kata sandi, laporan asli, atau data tran
 
 ## Format laporan dan batasan yang disengaja
 
-**Format `report.txt` GoPay asli belum diberikan.** Parser awal menerima tabel dengan judul kolom dan pemisah tab, titik koma, koma, atau `|`. Kolom wajib: ID transaksi unik, tanggal, nominal, status. Pengelola mencocokkan kolom sebelum impor. Contoh sintetis ada di `public/contoh-format.txt`; ini bukan spesifikasi resmi GoPay.
+**Format `report.txt` GoPay asli belum diberikan.** Parser awal menerima tabel dengan judul kolom dan pemisah tab, titik koma, koma, atau `|`. Kolom wajib: ID transaksi unik, tanggal, nominal, status. Judul kolom Indonesia/Inggris dikenali otomatis oleh server. Kolom bersih diprioritaskan jika tersedia; jika ada bruto dan biaya, keduanya diperiksa konsistensinya. Kolom ambigu, status tidak dikenal, atau format yang belum didukung menghasilkan pesan kesalahan tanpa menyimpan transaksi. Contoh sintetis ada di `public/contoh-format.txt`; ini bukan spesifikasi resmi GoPay.
 
-Nominal dalam rupiah bulat, angka tanpa pemisah atau format Indonesia (`125.000,00`). Tanggal ISO atau DD/MM/YYYY. Status sukses dihitung, gagal/tertunda dilewati, status tidak dikenal/refund harus diperiksa. Laporan pencairan tidak boleh diimpor sebagai penjualan. Bila biaya tidak tersedia, UI menandainya; jangan mengasumsikan biaya nol. Pilihan bruto mengurangi biaya yang tersedia satu kali, pilihan bersih tidak menguranginya lagi.
+Nominal dalam rupiah bulat, angka tanpa pemisah atau format Indonesia (`125.000,00`). Tanggal ISO atau DD/MM/YYYY. Status sukses dihitung, gagal/tertunda dilewati, status tidak dikenal/refund harus diperiksa. Laporan pencairan tidak boleh diimpor sebagai penjualan. Bila biaya tidak tersedia, UI menandainya; jangan mengasumsikan biaya nol. Deteksi bruto mengurangi biaya yang tersedia satu kali; nominal bersih tidak dikurangi lagi. Jenis transaksi pencairan/refund ditolak bila ditandai dalam laporan.
 
 Sebelum memakai laporan nyata, validasi parser terhadap satu laporan asli. Saldo website bukan saldo bank atau saldo GoPay. Tanpa saldo awal, UI menunjukkan arus kas bersih. Koreksi dilakukan dengan membatalkan catatan lama lalu mencatat ulang data yang benar, tanpa menghapus riwayat.
 
