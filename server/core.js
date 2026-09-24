@@ -6,14 +6,15 @@ const clean = (value,max=300) => typeof value==='string'&&value.trim().length>0&
 export function applyAction(original, action, payload, attachments={}) {
  const ledger=structuredClone(original), now=new Date().toISOString();let message='',reason='',before=null,after=null,importedMonth=null;
  const invalidate = dates => { const months=new Set(dates.map(x=>x.slice(0,7)));ledger.completedMonths=ledger.completedMonths.filter(m=>!months.has(m)); };
- if(action==='expense') {
+ if(action==='expense'||action==='income') {
   ensure(validDate(payload.date),'Tanggal tidak valid.');
   ensure(!ledger.opening || payload.date>=ledger.opening.date,'Tanggal mendahului awal pencatatan.');
   ensure(Number.isSafeInteger(payload.amount)&&payload.amount>0&&payload.amount<=1e12,'Nominal harus berupa rupiah bulat dan lebih besar dari nol.');
-  ensure(categories.includes(payload.category),'Kategori tidak valid.');
+  if(action==='expense')ensure(categories.includes(payload.category),'Kategori tidak valid.');
+  if(action==='income')ensure(typeof payload.receipt?.data==='string'&&payload.receipt.data.length>0,'Lampirkan foto atau file sebagai bukti pemasukan.');
   const description=clean(payload.description,160);ensure(description,'Isi keterangan maksimal 160 karakter.');
-  const transaction={id:randomUUID(),date:payload.date,amount:payload.amount,category:payload.category,description,type:'expense',source:'Manual',createdAt:now,receipt:attachments.receipt||null};
-  ledger.transactions.push(transaction);after=transaction;invalidate([payload.date]);message='Pengeluaran dicatat: '+description;
+  const transaction={id:randomUUID(),date:payload.date,amount:payload.amount,category:action==='income'?'Penjualan':payload.category,description,type:action,source:'Manual',createdAt:now,receipt:attachments.receipt||null};
+  ledger.transactions.push(transaction);after=transaction;invalidate([payload.date]);message=(action==='income'?'Pemasukan':'Pengeluaran')+' dicatat: '+description;
  } else if(action==='import') {
   ensure(typeof payload.filename==='string'&&/\.(txt|csv)$/i.test(payload.filename)&&payload.filename.length<=200,'Nama file tidak valid.');
   // Infer columns on the server; client-provided mappings cannot change the calculation.
@@ -39,7 +40,7 @@ export function applyAction(original, action, payload, attachments={}) {
   else {const b=ledger.imports.find(b=>b.id===payload.id&&!b.voided);ensure(b,'Impor tidak ditemukan atau sudah dibatalkan.',404);before=structuredClone(b);b.voided=true;b.voidedAt=now;b.voidReason=reason;after=b;const transactions=ledger.transactions.filter(t=>t.importId===b.id&&!t.voided);for(const t of transactions){t.voided=true;t.voidedAt=now;t.voidReason=reason;}invalidate(transactions.map(t=>t.date));message='Membatalkan impor: '+b.filename;}
  } else throw new UserError('Tindakan tidak dikenali.',404);
  ledger.audit.push({id:randomUUID(),at:now,message,reason,before:structuredClone(before),after:structuredClone(after)});ledger.updatedAt=now;
- return {ledger,message,...(importedMonth?{importedMonth}:{})};
+ return {ledger,message,...(importedMonth?{importedMonth}:{}),...(['income','expense'].includes(action)?{selectedMonth:payload.date.slice(0,7)}:{})};
 }
 export function viewLedger(ledger,role) {
  return {...ledger,transactions:ledger.transactions.map(({receipt,...t})=>({...t,reference:role==='admin'?t.reference:undefined,receipt:!!receipt})),imports:ledger.imports.map(({source,...b})=>b),audit:ledger.audit.map(({before,after,...a})=>a)};

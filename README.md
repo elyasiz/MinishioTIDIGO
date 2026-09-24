@@ -4,13 +4,15 @@ Website keuangan dengan tiga menu: Ringkasan, Transaksi, dan Laporan. Dibuat men
 
 ## Fitur
 
-- Ringkasan pemasukan, pengeluaran, saldo tercatat, grafik, dan rekap bulanan.
-- Impor TXT/CSV otomatis: cukup pilih file, transaksi langsung dihitung dan disimpan, tanpa pemetaan kolom atau konfirmasi tambahan. Duplikat dilewati.
-- Pencatatan pengeluaran, bukti JPG/PNG/PDF privat (maks. 2 MB).
-- Dua akses: pengelola dan pembaca. File sumber/bukti hanya dapat diunduh pengelola.
-- Pembatalan transaksi/impor, saldo awal, konfirmasi kelengkapan, dan jejak perubahan.
-- Penyimpanan bersama lintas perangkat; conditional writes mencegah perubahan saling menimpa.
-- Data contoh terpisah di memori browser, tidak disimpan sebagai transaksi nyata.
+- Ringkasan pemasukan, pengeluaran, saldo, grafik, dan rekap bulanan.
+- Pemasukan manual: tanggal, nominal, keterangan, dan bukti wajib.
+- Pengeluaran manual dengan kategori dan bukti opsional.
+- Lampiran privat JPG, PNG, PDF, TXT, atau CSV maksimal 2 MB per transaksi.
+- Bukti dapat dibuka melalui rincian transaksi dan daftar Bukti transaksi di menu Laporan.
+- Dua akses: pengelola dan pembaca. File bukti hanya dapat diunduh pengelola.
+- Pembatalan dengan alasan, saldo awal, status kelengkapan, dan jejak perubahan.
+- Data bersama lintas perangkat dengan conditional writes untuk mencegah perubahan saling menimpa.
+- Data contoh terpisah dan tidak disimpan sebagai transaksi nyata.
 
 ## Menjalankan
 
@@ -25,15 +27,15 @@ Node.js 24, pnpm. `pnpm install`, lalu `pnpm dev` untuk UI. Jalankan `vercel dev
 
 Jangan commit `.env*`, `.local`, token, kata sandi, laporan asli, atau data transaksi. Sesi memakai cookie HttpOnly/Secure/SameSite, berlaku 8 jam. Rotasi salah satu kata sandi/secret membatalkan sesi lama. Percobaan login dibatasi 12 kali per alamat IP dalam 15 menit melalui penyimpanan bersama; berkas pembatasan lama di `security/` dapat dibersihkan berkala oleh pemilik.
 
-## Format laporan dan batasan yang disengaja
+## Pencatatan dan bukti
 
-**Format `report.txt` GoPay asli belum diberikan.** Parser awal menerima tabel dengan judul kolom dan pemisah tab, titik koma, koma, atau `|`. Kolom wajib: ID transaksi unik, tanggal, nominal, status. Judul kolom Indonesia/Inggris dikenali otomatis oleh server. Kolom bersih diprioritaskan jika tersedia; jika ada bruto dan biaya, keduanya diperiksa konsistensinya. Kolom ambigu, status tidak dikenal, atau format yang belum didukung menghasilkan pesan kesalahan tanpa menyimpan transaksi. Contoh sintetis ada di `public/contoh-format.txt`; ini bukan spesifikasi resmi GoPay.
+Impor GoPay sudah diganti dengan pemasukan manual. Endpoint impor baru ditolak; arsip dan transaksi impor terdahulu tetap dapat dibaca dan dibatalkan. Parser lama dipertahankan untuk kompatibilitas riwayat dan pengujian.
 
-Nominal dalam rupiah bulat, angka tanpa pemisah atau format Indonesia (`125.000,00`). Tanggal ISO atau DD/MM/YYYY. Status sukses dihitung, gagal/tertunda dilewati, status tidak dikenal/refund harus diperiksa. Laporan pencairan tidak boleh diimpor sebagai penjualan. Bila biaya tidak tersedia, UI menandainya; jangan mengasumsikan biaya nol. Deteksi bruto mengurangi biaya yang tersedia satu kali; nominal bersih tidak dikurangi lagi. Jenis transaksi pencairan/refund ditolak bila ditandai dalam laporan.
+Jumlah yang dimasukkan adalah rupiah bulat yang diterima/dikeluarkan. File yang dilampirkan menjadi bukti, bukan sumber perhitungan otomatis. Gambar/PDF diperiksa tanda tangan formatnya; TXT/CSV harus berupa teks UTF-8 yang valid. Pembaca dapat melihat ketersediaan bukti, tetapi berkasnya hanya dapat dibuka pengelola.
 
-Sebelum memakai laporan nyata, validasi parser terhadap satu laporan asli. Saldo website bukan saldo bank atau saldo GoPay. Tanpa saldo awal, UI menunjukkan arus kas bersih. Koreksi dilakukan dengan membatalkan catatan lama lalu mencatat ulang data yang benar, tanpa menghapus riwayat.
+Tanpa saldo awal, ringkasan menunjukkan arus kas bersih. Koreksi dilakukan dengan membatalkan catatan lama dan memasukkan catatan yang benar. Saldo website bukan saldo bank atau GoPay.
 
-Ledger disimpan sebagai JSON privat, cocok untuk minishop dengan volume kecil. File sumber dan bukti terpisah. Maksimal 10.000 baris dan 2 MB per impor. Untuk volume besar, pindahkan penyimpanan ledger ke database transaksional serta tambahkan pagination. Kegagalan penyimpanan ledger setelah unggah bukti dapat meninggalkan file tanpa referensi; tidak menghasilkan pencatatan keuangan sebagian. File semacam itu hanya dapat diakses pemilik store.
+Ledger JSON privat cocok untuk volume minishop kecil. Untuk volume besar, gunakan database transaksional dan pagination. Kegagalan penyimpanan ledger setelah unggah bukti bisa meninggalkan file tanpa referensi, tetapi tidak menghasilkan pencatatan keuangan sebagian.
 
 ## Privasi dan pemulihan
 
