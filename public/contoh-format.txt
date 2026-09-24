@@ -1,0 +1,4 @@
+id_transaksi;tanggal;nominal;biaya;status
+CONTOH-001;2026-09-01;75000;0;berhasil
+CONTOH-002;2026-09-02;125000;0;berhasil
+CONTOH-003;2026-09-02;50000;0;gagal
