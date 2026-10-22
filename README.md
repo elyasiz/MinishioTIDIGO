@@ -13,6 +13,7 @@ Website keuangan dengan tiga menu: Ringkasan, Transaksi, dan Laporan. Dibuat men
 - Pembatalan dengan alasan, saldo awal, status kelengkapan, dan jejak perubahan.
 - Data bersama lintas perangkat dengan conditional writes untuk mencegah perubahan saling menimpa.
 - Data contoh terpisah dan tidak disimpan sebagai transaksi nyata.
+- Unduh transaksi sebagai CSV atau laporan PDF berdesain Tidigo dengan tanggal awal/akhir (inklusif, termasuk lintas bulan), pilihan jenis transaksi, dan pratinjau jumlah serta total.
 
 ## Menjalankan
 
@@ -38,6 +39,8 @@ Tanpa saldo awal, ringkasan menunjukkan arus kas bersih. Koreksi dilakukan denga
 Ledger JSON privat cocok untuk volume minishop kecil. Untuk volume besar, gunakan database transaksional dan pagination. Kegagalan penyimpanan ledger setelah unggah bukti bisa meninggalkan file tanpa referensi, tetapi tidak menghasilkan pencatatan keuangan sebagian.
 
 ## Privasi dan pemulihan
+
+Di menu Transaksi, pilih **Unduh laporan**, atur tanggal awal/akhir dan jenis transaksi, lalu pilih PDF atau CSV. Rentang unduhan terpisah dari bulan dan pencarian tabel. Laporan hanya memuat transaksi aktif; arus kas bersih tidak memasukkan saldo awal. PDF berukuran A4, dengan logo, ringkasan, tabel berlanjut otomatis, total, dan nomor halaman. Mode contoh ditandai pada setiap halaman PDF serta nama file. Font Noto Sans berlisensi SIL OFL disertakan di `public/fonts/`, dimuat hanya ketika membuat PDF, dan disematkan dalam laporan agar teks tetap terbaca.
 
 Catatan nyata hanya tersedia setelah login. Demo dapat dilihat tanpa login. Pembaca tidak menerima lokasi file privat atau ID transaksi GoPay. Unduh CSV untuk rekap, dan ekspor `ledger/main.json` melalui dashboard Blob sebagai cadangan lengkap beserta file `reports/` dan `receipts/`. Audit sebelum/sesudah tersimpan dalam ledger privat. Tidak ada laporan asli yang disertakan dalam repositori.
 
