@@ -20,10 +20,11 @@ export default async function handler(req,res){
   const payload=typeof req.body==='string'?JSON.parse(req.body):req.body;ensure(payload&&typeof payload==='object'&&!Array.isArray(payload),'Data tidak valid.');ensure(JSON.stringify(payload).length<=3_000_000,'Ukuran data terlalu besar.',413);
   if(action==='login'){
    ensure(typeof payload.password==='string'&&payload.password.length<=200,'Kata sandi tidak valid.');await checkLoginRate(req);
-   const matched=equal(payload.password,process.env.ADMIN_PASSWORD)?'admin':process.env.VIEWER_PASSWORD?.length>=16&&equal(payload.password,process.env.VIEWER_PASSWORD)?'viewer':null;ensure(matched,'Kata sandi salah.',401);const ledger=await readLedger();setCookie(res,signSession(matched));return res.status(200).json({role:matched,ledger:viewLedger(ledger,matched)});
+   const matched=equal(payload.password,process.env.ADMIN_PASSWORD)?'admin':process.env.VIEWER_PASSWORD?.length>=16&&equal(payload.password,process.env.VIEWER_PASSWORD)?'viewer':null;ensure(matched,'Kata sandi salah.',401);if(payload.requireAdmin&&matched!=='admin')return res.status(403).json({error:'Kata sandi ini adalah akses pembaca. Gunakan kata sandi pengelola.',code:'ADMIN_REQUIRED'});const ledger=await readLedger();setCookie(res,signSession(matched));return res.status(200).json({role:matched,ledger:viewLedger(ledger,matched)});
   }
   if(action==='logout'){setCookie(res,'',0);return res.status(200).json({ok:true});}
-  ensure(role==='admin','Masuk sebagai pengelola untuk mengubah catatan.',403);
+  if(!role)return res.status(401).json({error:'Sesi pengelola telah berakhir atau belum aktif. Masuk kembali untuk menyimpan catatan.',code:'SESSION_EXPIRED'});
+  if(role!=='admin')return res.status(403).json({error:'Anda masuk sebagai pembaca. Gunakan kata sandi pengelola untuk mengubah catatan.',code:'ADMIN_REQUIRED'});
   ensure(action!=='import','Impor GoPay sudah diganti dengan pencatatan pemasukan manual. Gunakan tombol Pemasukan dan lampirkan bukti.',410);
   // Validate the full mutation before storing any attachments.
   const previous=await readLedger();applyAction(previous,action,payload);

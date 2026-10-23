@@ -3,33 +3,44 @@ import { createRoot } from 'react-dom/client';
 import { LayoutDashboard, ArrowLeftRight, ChartNoAxesCombined, ArrowDownLeft, ArrowUpRight, Upload, Plus, ChevronRight, CalendarDays, Search, X, FileText, ShieldCheck, LogOut, Settings2, Wallet, ArrowRight, Download, CircleCheck, Info, AlertCircle, ReceiptText, LockKeyhole, Menu, Check, FolderOpen } from 'lucide-react';
 import { emptyLedger, demoLedger, totals, money, today, categories } from './ledger';
 import TransactionExport from './TransactionExport.jsx';
+import ManagerLogin from './ManagerLogin.jsx';
+import { api, requiresManagerLogin } from './api.js';
 import './styles.css';
 
 const monthName = month => new Date(month+'-01T12:00:00').toLocaleDateString('id-ID',{month:'long',year:'numeric'});
 const dateLabel = date => new Date(date+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
-async function api(action, payload) {
-  const response = await fetch('/api/ledger'+(action?'?action='+action:''), payload ? {method:'POST', headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)} : {});
-  if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('Layanan pencatatan belum terhubung. Anda bisa menjelajahi tampilan contoh.');
-  const data = await response.json(); if(!response.ok) throw new Error(data.error || 'Permintaan gagal. Coba lagi.'); return data;
-}
 function App() {
  const [page,setPage]=useState('Ringkasan'),[ledger,setLedger]=useState(emptyLedger),[month,setMonth]=useState(today().slice(0,7));
  const [demo,setDemo]=useState(false),[role,setRole]=useState(null),[configured,setConfigured]=useState(false),[loaded,setLoaded]=useState(false),[serviceError,setServiceError]=useState('');
  const [modal,setModal]=useState(null),[toast,setToast]=useState(''),[search,setSearch]=useState(''),[type,setType]=useState('all'),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [managerLogin,setManagerLogin]=useState('');
  const stats=totals(ledger,month), admin=role==='admin'&&!demo;
  useEffect(()=>{api('session').then(data=>{setConfigured(data.configured);setRole(data.role);if(data.ledger)setLedger(data.ledger);}).catch(e=>setServiceError(e.message)).finally(()=>setLoaded(true));},[]);
  useEffect(()=>{if(toast){const id=setTimeout(()=>setToast(''),4500);return()=>clearTimeout(id);}},[toast]);
- function open(value) {setError('');setModal(value);}
+ function open(value) {setError('');setManagerLogin('');setModal(value);}
  async function mutate(action,payload) {
+  if(managerLogin)return false;
   setBusy(true);setError('');
-  try {const data=await api(action,payload);setLedger(data.ledger);if(data.selectedMonth)setMonth(data.selectedMonth);setModal(null);setToast(data.message||'Perubahan berhasil disimpan.');return true;} catch(e){setError(e.message);return false;} finally{setBusy(false);}
+  try {const data=await api(action,payload);setLedger(data.ledger);if(data.selectedMonth)setMonth(data.selectedMonth);setModal(null);setToast(data.message||'Perubahan berhasil disimpan.');return true;} catch(e){if(requiresManagerLogin(e)){setRole(e.code==='ADMIN_REQUIRED'?'viewer':null);if(e.code==='SESSION_EXPIRED')setLedger(emptyLedger());setManagerLogin(e.message);}else setError(e.message);return false;} finally{setBusy(false);}
  }
- const action = name => demo ? open('demoNotice') : admin ? open(name) : open('login');
+ async function action(name) {
+  if(demo){open('demoNotice');return;}
+  if(busy)return;
+  open(name);setBusy(true);
+  try {const data=await api('session');setConfigured(data.configured);setRole(data.role);setLedger(data.ledger||emptyLedger());if(data.role!=='admin')setManagerLogin(data.role==='viewer'?'Akses pembaca hanya dapat melihat catatan. Gunakan kata sandi pengelola untuk menambah transaksi.':'Sesi pengelola belum aktif atau telah berakhir. Masuk kembali untuk menyimpan transaksi.');}
+  catch(e){setError(e.message);setManagerLogin('Akses pengelola belum dapat diperiksa. Silakan masuk kembali.');}
+  finally{setBusy(false);}
+ }
+ async function restoreManagerAccess(password) {
+  setBusy(true);
+  try {const data=await api('login',{password,requireAdmin:true});setRole(data.role);setLedger(data.ledger);setManagerLogin('');setError('');setToast('Berhasil masuk. Isian tetap ada; tekan Simpan untuk melanjutkan.');}
+  finally{setBusy(false);}
+ }
  async function toggleDemo(){ if(demo){setDemo(false);setLedger(emptyLedger());try{const data=await api('session');setRole(data.role);if(data.ledger)setLedger(data.ledger);}catch{}}else{setDemo(true);setLedger(demoLedger());} }
  const filtered=stats.rows.filter(t=>(type==='all'||t.type===type)&&`${t.description} ${t.category} ${t.reference||''}`.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>b.date.localeCompare(a.date));
  return <div className="app-shell">
   <aside className="sidebar"><a href="#" className="brand" aria-label="Tidigo beranda" onClick={e=>{e.preventDefault();setPage('Ringkasan');}}><img src="/tidigo-logo.png" alt="Tidigo"/></a><div className="workspace-label"><span className="store-icon"><Wallet size={17}/></span><div>Minishop Tidigo<small>Ruang keuangan</small></div></div><div className="nav-label">MENU UTAMA</div><nav>{[['Ringkasan',LayoutDashboard],['Transaksi',ArrowLeftRight],['Laporan',ChartNoAxesCombined]].map(([name,Icon])=><button key={name} className={page===name?'nav-item active':'nav-item'} onClick={()=>{setPage(name);setSearch('');setType('all');}}><Icon size={20}/>{name}{page===name&&<span className="nav-dot"/>}</button>)}</nav><div className="sidebar-bottom"><div className="trust-note"><ShieldCheck size={23}/><strong>Setiap rupiah, tercatat.</strong><p>Lebih terbuka.<br/>Lebih mudah dipercaya.</p></div><button className="account" onClick={()=>open(role?'account':'login')}><span className="avatar">{role==='admin'?'A':'T'}</span><span>{role==='admin'?'Pengelola Tidigo':role==='viewer'?'Pembaca Tidigo':'Minishop Tidigo'}<small>{role?'Akses '+(role==='admin'?'pengelola':'pembaca'):'Masuk untuk mengelola'}</small></span><ChevronRight size={16}/></button></div></aside>
-  <div className="main-wrap"><header className="topbar"><div className="breadcrumb">Minishop <ChevronRight size={14}/><span>{page}</span></div><div className="top-right"><span className={'access-badge '+(demo?'demo-badge':'')}><span/>{demo?'Mode contoh':role?'Akses terbatas':'Ruang transparansi'}</span><span className="top-avatar">T</span></div></header>
+  <div className="main-wrap"><header className="topbar"><div className="breadcrumb">Minishop <ChevronRight size={14}/><span>{page}</span></div><div className="top-right"><span className={'access-badge '+(demo?'demo-badge':'')}><span/>{demo?'Mode contoh':role==='admin'?'Pengelola':role==='viewer'?'Pembaca':'Belum masuk'}</span><span className="top-avatar">T</span></div></header>
   <main>
    {demo&&<div className="notice demo-notice"><Info size={17}/><span>Anda melihat <strong>data contoh</strong>. Angka ini bukan keuangan Tidigo sebenarnya.</span><button onClick={toggleDemo}>Keluar dari contoh <X size={15}/></button></div>}
    <div className="page-heading"><div><div className="eyebrow">KEUANGAN MINISHOP</div><h1>{page==='Ringkasan'?'Semua tercatat. Semua terlihat.':page==='Transaksi'?'Catatan setiap transaksi.':'Laporan yang mudah dipahami.'}</h1><p>{page==='Ringkasan'?'Pantau pemasukan dan pengeluaran Tidigo dalam satu tempat.':page==='Transaksi'?'Telusuri uang masuk dan keluar, sampai ke rinciannya.':'Lihat perjalanan keuangan minishop, bulan demi bulan.'}</p></div><div className="heading-actions"><button className="button secondary" onClick={()=>action('expense')}><Plus size={17}/>Pengeluaran</button><button className="button primary" onClick={()=>action('income')}><Plus size={17}/>Pemasukan</button></div></div>
@@ -47,8 +58,9 @@ function App() {
   {toast&&<div className="toast" role="status"><CircleCheck size={20}/>{toast}</div>}
   {modal&&<Modal title={typeof modal==='object'?modal.type==='detail'?'Rincian transaksi':'Rincian impor':({expense:'Tambah pengeluaran',income:'Tambah pemasukan',login:'Masuk ke Tidigo',opening:'Tetapkan saldo awal',complete:'Kelengkapan laporan',account:'Akses Anda',demoNotice:'Anda sedang melihat contoh',export:'Unduh laporan transaksi'})[modal]} close={()=>!busy&&setModal(null)}><>
    {error&&<div className="form-error" role="alert"><AlertCircle size={17}/>{error}</div>}
+   {managerLogin&&<ManagerLogin message={managerLogin} busy={busy} onLogin={restoreManagerAccess}/>}
    {modal==='login'&&<form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{const data=await api('login',{password:new FormData(e.currentTarget).get('password')});setRole(data.role);setLedger(data.ledger);setDemo(false);setModal(null);setToast('Berhasil masuk.');}catch(e){setError(e.message);}finally{setBusy(false);}}}><p className="modal-intro">Gunakan kata sandi pengelola atau pembaca untuk mengakses catatan keuangan.</p>{!configured&&<div className="notice"><Info size={17}/>Akses akun belum diaktifkan. Setelah pengelola mengaktifkan kata sandi, Anda dapat masuk dan mencatat transaksi.</div>}<label className="field">Kata sandi<input name="password" type="password" autoComplete="current-password" required autoFocus/></label><button className="button primary full" disabled={busy||!configured}>{busy?'Memeriksa…':'Masuk'}</button><button className="button text-button full" type="button" onClick={()=>{if(!demo)toggleDemo();setModal(null);}}>Jelajahi data contoh <ArrowRight size={16}/></button></form>}
-   {['income','expense'].includes(modal)&&<TransactionForm kind={modal} busy={busy} onSave={payload=>mutate(modal,payload)}/>}
+   {['income','expense'].includes(modal)&&<TransactionForm kind={modal} busy={busy} locked={!!managerLogin} onSave={payload=>mutate(modal,payload)}/>}
    {modal==='export'&&<TransactionExport transactions={ledger.transactions} month={month} demo={demo} busy={busy} setBusy={setBusy} onDownloaded={()=>{setModal(null);setToast('Laporan siap. Periksa unduhan di perangkat Anda.');}}/>}
    {modal==='opening'&&<form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);mutate('opening',{date:f.get('date'),amount:Number(f.get('amount')),reason:f.get('reason')});}}><p className="modal-intro">Masukkan saldo pada awal pencatatan. Perubahan ini disimpan dalam jejak perubahan.</p><label className="field">Tanggal mulai<input name="date" type="date" defaultValue={ledger.opening?.date||month+'-01'} required/></label><label className="field">Saldo awal (Rp)<input name="amount" type="number" min="0" max="1000000000000" step="1" defaultValue={ledger.opening?.amount??0} required/></label><label className="field">Alasan / sumber saldo<input name="reason" required maxLength={300} placeholder="Contoh: saldo kas sebelum pencatatan dimulai"/></label><button disabled={busy} className="button primary full">{busy?'Menyimpan…':'Simpan saldo awal'}</button></form>}
    {modal==='complete'&&<><p className="modal-intro">{ledger.completedMonths.includes(month)?'Tandai ulang laporan ini sebagai belum lengkap?':'Pastikan seluruh pemasukan dan pengeluaran '+monthName(month)+' sudah dicatat. Catatan baru atau perubahan transaksi akan mengembalikan status menjadi belum lengkap.'}</p><button className="button primary full" disabled={busy} onClick={()=>mutate('complete',{month,complete:!ledger.completedMonths.includes(month)})}>Konfirmasi perubahan status</button></>}
@@ -73,12 +85,12 @@ async function readReceipt(file) {
  if(!type)throw new Error('Gunakan JPG, PNG, PDF, TXT, atau CSV.');
  return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({name:file.name,type,data:reader.result.split(',')[1]});reader.onerror=()=>reject(new Error('Bukti tidak dapat dibaca.'));reader.readAsDataURL(file);});
 }
-function TransactionForm({kind,busy,onSave}) {
+function TransactionForm({kind,busy,locked,onSave}) {
  const income=kind==='income', label=income?'pemasukan':'pengeluaran';
  const [error,setError]=useState(''),[reading,setReading]=useState(false),[filename,setFilename]=useState('');
  const submitting=useRef(false), pending=busy||reading;
  async function submit(event) {
-  event.preventDefault();if(submitting.current||busy)return;
+  event.preventDefault();if(submitting.current||busy||locked)return;
   submitting.current=true;setReading(true);setError('');
   const form=new FormData(event.currentTarget);
   try {
@@ -90,12 +102,12 @@ function TransactionForm({kind,busy,onSave}) {
  return <form onSubmit={submit}>
   <p className="modal-intro">{income?'Isi jumlah uang yang diterima dan lampirkan buktinya. Pemasukan langsung masuk ke ringkasan.':'Catat pengeluaran agar penggunaan uang tetap transparan.'}</p>
   {error&&<div className="form-error" role="alert">{error}</div>}
-  <fieldset disabled={pending} style={{border:0,padding:0,margin:0,minWidth:0}}>
+  <fieldset disabled={pending||locked} style={{border:0,padding:0,margin:0,minWidth:0}}>
    <div className="form-grid"><label className="field">Tanggal<input name="date" type="date" defaultValue={today()} required/></label><label className="field">Nominal (Rp)<input name="amount" type="number" step="1" min="1" max="1000000000000" placeholder="0" required autoFocus/></label></div>
    {!income&&<label className="field">Kategori<select name="category" required>{categories.map(c=><option key={c}>{c}</option>)}</select></label>}
    <label className="field">Keterangan<input name="description" placeholder={income?'Contoh: penjualan minishop hari ini':'Contoh: pembelian filamen PLA'} maxLength={160} required/></label>
    <label className="field">Bukti transaksi <span className="optional">{income?'Wajib':'Opsional'}</span><input name="receipt" type="file" accept=".jpg,.jpeg,.png,.pdf,.txt,.csv" required={income} onChange={e=>setFilename(e.target.files[0]?.name||'')}/><small>{filename?'Terpilih: '+filename:'JPG, PNG, PDF, TXT, atau CSV · maksimal 2 MB'}</small><small>Bukti tersimpan privat dan dapat dibuka oleh pengelola.</small></label>
-   <button className="button primary full" disabled={pending}>{pending?'Menyimpan…':'Simpan '+label}</button>
+   <button className="button primary full" disabled={pending||locked}>{locked?'Masuk dahulu untuk menyimpan':pending?'Menyimpan…':'Simpan '+label}</button>
   </fieldset>
  </form>;
 }

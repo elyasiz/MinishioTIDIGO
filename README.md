@@ -28,6 +28,8 @@ Node.js 24, pnpm. `pnpm install`, lalu `pnpm dev` untuk UI. Jalankan `vercel dev
 
 Jangan commit `.env*`, `.local`, token, kata sandi, laporan asli, atau data transaksi. Sesi memakai cookie HttpOnly/Secure/SameSite, berlaku 8 jam. Rotasi salah satu kata sandi/secret membatalkan sesi lama. Percobaan login dibatasi 12 kali per alamat IP dalam 15 menit melalui penyimpanan bersama; berkas pembatasan lama di `security/` dapat dibersihkan berkala oleh pemilik.
 
+Akses diperiksa ulang saat membuka formulir pemasukan/pengeluaran. Jika sesi habis ketika formulir masih terbuka, server mengembalikan `401 SESSION_EXPIRED`; akses pembaca mengembalikan `403 ADMIN_REQUIRED`. Formulir meminta kata sandi pengelola di tempat yang sama dan mempertahankan isian serta pilihan file. Setelah berhasil masuk, pengguna menekan Simpan lagi. Permintaan yang ditolak karena akses tidak diulang otomatis. Pemulihan sesi tidak memperpanjang masa berlaku sesi atau memberi hak tulis kepada pembaca.
+
 ## Pencatatan dan bukti
 
 Impor GoPay sudah diganti dengan pemasukan manual. Endpoint impor baru ditolak; arsip dan transaksi impor terdahulu tetap dapat dibaca dan dibatalkan. Parser lama dipertahankan untuk kompatibilitas riwayat dan pengujian.
