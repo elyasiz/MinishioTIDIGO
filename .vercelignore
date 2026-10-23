@@ -1,6 +1,7 @@
 .local/
 .env*
 node_modules/
+public/pdfjs/
 dist/
 .git/
 *.log

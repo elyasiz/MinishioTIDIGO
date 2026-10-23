@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { AlertCircle, LockKeyhole } from 'lucide-react';
 
-export default function ManagerLogin({ message, busy, onLogin }) {
+export default function ManagerLogin({ message, resumeHint, busy, onLogin }) {
   const [error, setError] = useState('');
   return <section className="manager-login" aria-label="Masuk ulang sebagai pengelola">
     <div className="manager-login-heading"><LockKeyhole size={19}/><h3>Masuk sebagai pengelola</h3></div>
     <p>{message}</p>
-    <p>Isian dan berkas bukti tetap ada. Setelah masuk, tekan tombol Simpan di bawah.</p>
+    <p>{resumeHint || 'Isian dan berkas bukti tetap ada. Setelah masuk, tekan tombol Simpan di bawah.'}</p>
     <form onSubmit={async event => {
       event.preventDefault();
       if (busy) return;

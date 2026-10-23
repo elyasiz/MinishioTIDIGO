@@ -8,7 +8,7 @@ Website keuangan dengan tiga menu: Ringkasan, Transaksi, dan Laporan. Dibuat men
 - Pemasukan manual: tanggal, nominal, keterangan, dan bukti wajib.
 - Pengeluaran manual dengan kategori dan bukti opsional.
 - Lampiran privat JPG, PNG, PDF, TXT, atau CSV maksimal 2 MB per transaksi.
-- Bukti dapat dibuka melalui rincian transaksi dan daftar Bukti transaksi di menu Laporan.
+- Bukti tampil langsung dalam rincian transaksi, termasuk foto JPG/PNG, PDF, dan teks TXT/CSV. Tersedia tampilan ukuran penuh dan unduhan file. Daftar bukti juga dapat dibuka melalui menu Laporan.
 - Dua akses: pengelola dan pembaca. File bukti hanya dapat diunduh pengelola.
 - Pembatalan dengan alasan, saldo awal, status kelengkapan, dan jejak perubahan.
 - Data bersama lintas perangkat dengan conditional writes untuk mencegah perubahan saling menimpa.
@@ -35,6 +35,10 @@ Akses diperiksa ulang saat membuka formulir pemasukan/pengeluaran. Jika sesi hab
 Impor GoPay sudah diganti dengan pemasukan manual. Endpoint impor baru ditolak; arsip dan transaksi impor terdahulu tetap dapat dibaca dan dibatalkan. Parser lama dipertahankan untuk kompatibilitas riwayat dan pengujian.
 
 Jumlah yang dimasukkan adalah rupiah bulat yang diterima/dikeluarkan. File yang dilampirkan menjadi bukti, bukan sumber perhitungan otomatis. Gambar/PDF diperiksa tanda tangan formatnya; TXT/CSV harus berupa teks UTF-8 yang valid. Pembaca dapat melihat ketersediaan bukti, tetapi berkasnya hanya dapat dibuka pengelola.
+
+Pratinjau memuat berkas melalui endpoint privat dengan sesi pengelola, termasuk bukti dari transaksi lama. Foto dan PDF ditampilkan dari URL blob sementara yang dilepas saat rincian ditutup; TXT/CSV ditampilkan sebagai teks, tanpa mengeksekusi markup di dalamnya. Jika sesi berakhir saat membuka bukti, pengelola dapat masuk ulang di rincian yang sama. Tidak ada perubahan pada hak akses berkas atau data transaksi saat melihat bukti.
+
+PDF dirender dengan PDF.js yang dimuat saat diperlukan, dengan pilihan halaman dan perbesaran. Worker serta aset pendukung font/gambar disajikan dari domain website sendiri. Konfigurasi Vite menyalin aset PDF.js dari dependency ke `public/pdfjs/` saat development/build; direktori hasil tersebut tidak masuk Git.
 
 Tanpa saldo awal, ringkasan menunjukkan arus kas bersih. Koreksi dilakukan dengan membatalkan catatan lama dan memasukkan catatan yang benar. Saldo website bukan saldo bank atau GoPay.
 
